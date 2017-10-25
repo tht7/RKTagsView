@@ -12,6 +12,21 @@ typedef NS_ENUM(NSInteger, RKTagsViewTextFieldAlign) { // align is relative to a
 
 @class RKTagsView;
 
+@protocol RKTag <NSObject>
+@required
+-(NSString*)label;
+-(NSString*)getId;
+
+@end
+
+@interface RKSimpleTag : NSObject <RKTag>
+@property (nonnull,nonatomic,strong) NSString* label;
+
+-(instancetype)initWithLabel:(NSString*)label;
++(instancetype)newWithLabel:(NSString*)label;
+
+@end
+
 @protocol RKTagsViewDelegate <NSObject>
 
 @optional
@@ -31,8 +46,9 @@ typedef NS_ENUM(NSInteger, RKTagsViewTextFieldAlign) { // align is relative to a
 
 @property (nonatomic, strong, readonly) UIScrollView *scrollView; // scrollView delegate is not used
 @property (nonatomic, strong, readonly) UITextField *textField; // textfield delegate is not used
-@property (nonatomic, copy, readonly) NSArray<NSString *> *tags;
+@property (nonatomic, copy, readonly) NSArray<id<RKTag>> *tags;
 @property (nonatomic, copy, readonly) NSArray<NSNumber *> *selectedTagIndexes;
+@property (nonatomic, copy, readonly) NSArray<NSNumber *> *hiddenTagIndexes;
 @property (nonatomic, weak, nullable) IBOutlet id<RKTagsViewDelegate> delegate;
 @property (nonatomic, readonly) CGSize contentSize;
 
@@ -58,7 +74,9 @@ typedef NS_ENUM(NSInteger, RKTagsViewTextFieldAlign) { // align is relative to a
 - (void)reloadButtons;
 
 - (void)addTag:(NSString *)tag;
-- (void)insertTag:(NSString *)tag atIndex:(NSInteger)index;
+- (void)addTagObject:(id<RKTag>)tag;
+- (void)insertTag:(NSString*)tag atIndex:(NSInteger)index;
+- (void)insertTagObject:(id<RKTag>)tag atIndex:(NSInteger)index;
 - (void)moveTagAtIndex:(NSInteger)index toIndex:(NSInteger)newIndex; // can be animated
 - (void)removeTagAtIndex:(NSInteger)index;
 - (void)removeAllTags;
@@ -67,6 +85,11 @@ typedef NS_ENUM(NSInteger, RKTagsViewTextFieldAlign) { // align is relative to a
 - (void)deselectTagAtIndex:(NSInteger)index;
 - (void)selectAll;
 - (void)deselectAll;
+
+- (void)hideTagAtIndex:(NSInteger)index;
+- (void)showTagAtIndex:(NSInteger)index;
+- (void)hideAll;
+- (void)showAll;
 
 @end
 

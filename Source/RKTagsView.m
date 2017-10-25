@@ -12,8 +12,31 @@ const CGFloat RKTagsViewAutomaticDimension = -0.0001;
 @property (nonatomic, weak) RKTagsView *tagsView;
 @end
 
+@implementation RKSimpleTag : NSObject
+
+@synthesize description;
+@synthesize label;
+
+-(instancetype)initWithLabel:(NSString*)label{
+    self.label = label;
+    return self;
+}
+
++(instancetype)newWithLabel:(NSString*)label{
+    return [[RKSimpleTag alloc] initWithLabel:label];
+}
+- (nonnull NSString *)getId {
+    return label;
+}
+
+- (nonnull NSString *)description {
+    return label;
+}
+
+@end
+
 @interface RKTagsView()
-@property (nonatomic, strong) NSMutableArray<NSString *> *mutableTags;
+@property (nonatomic, strong) NSMutableArray<id<RKTag>> *mutableTags;
 @property (nonatomic, strong) NSMutableArray<UIButton *> *mutableTagButtons;
 @property (nonatomic, strong, readwrite) UIScrollView *scrollView;
 @property (nonatomic, strong) __RKInputTextField *inputTextField;
@@ -103,6 +126,7 @@ const CGFloat RKTagsViewAutomaticDimension = -0.0001;
   // layout tags buttons
   CGRect previousButtonFrame = CGRectZero;
   for (UIButton *button in self.mutableTagButtons) {
+      if ([button isHidden])continue;
     CGRect buttonFrame = [self originalFrameForView:button];
     if (_scrollsHorizontally || (CGRectGetMaxX(previousButtonFrame) + self.interitemSpacing + buttonFrame.size.width <= contentWidth)) {
       buttonFrame.origin.x = CGRectGetMaxX(previousButtonFrame);
@@ -139,7 +163,7 @@ const CGFloat RKTagsViewAutomaticDimension = -0.0001;
     if (self.textFieldHeight > RKTagsViewAutomaticDimension) {
       textfieldFrame.size.height = self.textFieldHeight;
     }
-    if (self.mutableTagButtons.count == 0) {
+    if (self.mutableTagButtons.count == 0 || (self.hiddenTagIndexes.count != 0 && self.hiddenTagIndexes.count == self.mutableTagButtons.count)) {
       textfieldFrame.origin.x = 0;
       textfieldFrame.origin.y = 0;
       textfieldFrame.size.width = contentWidth;
@@ -209,7 +233,7 @@ const CGFloat RKTagsViewAutomaticDimension = -0.0001;
   return self.inputTextField;
 }
 
-- (NSArray<NSString *> *)tags {
+- (NSArray<id<RKTag>> *)tags {
   return self.mutableTags.copy;
 }
 
@@ -221,6 +245,16 @@ const CGFloat RKTagsViewAutomaticDimension = -0.0001;
     }
   }
   return mutableIndexes.copy;
+}
+
+- (NSArray<NSNumber *> *)hiddenTagIndexes {
+    NSMutableArray *mutableIndexes = [NSMutableArray new];
+    for (int index = 0; index < self.mutableTagButtons.count; index++) {
+        if (self.mutableTagButtons[index].hidden) {
+            [mutableIndexes addObject:@(index)];
+        }
+    }
+    return mutableIndexes.copy;
 }
 
 - (void)setFont:(UIFont *)font {
@@ -342,16 +376,23 @@ const CGFloat RKTagsViewAutomaticDimension = -0.0001;
 - (void)reloadButtons {
   NSArray *tags = self.tags;
   [self removeAllTags];
-  for (NSString *tag in tags) {
-    [self addTag:tag];
+  for (id<RKTag> tag in tags) {
+    [self addTagWithObject:tag];
   }
 }
 
 - (void)addTag:(NSString *)tag {
-  [self insertTag:tag atIndex:self.mutableTags.count];
+    [self addTagWithObject:[RKSimpleTag newWithLabel:tag]];
 }
 
-- (void)insertTag:(NSString *)tag atIndex:(NSInteger)index {
+- (void)addTagWithObject:(id<RKTag>)tag {
+    [self insertTagObject:tag atIndex:self.mutableTags.count];
+}
+- (void)insertTag:(NSString*)tag atIndex:(NSInteger)index {
+    [self insertTagObject:[RKSimpleTag newWithLabel:tag] atIndex:index];
+}
+
+- (void)insertTagObject:(id<RKTag>)tag atIndex:(NSInteger)index {
   if (index >= 0 && index <= self.mutableTags.count) {
     [self.mutableTags insertObject:tag atIndex:index];
     UIButton *tagButton;
@@ -365,7 +406,7 @@ const CGFloat RKTagsViewAutomaticDimension = -0.0001;
       tagButton.titleLabel.font = self.font;
       tagButton.tintColor = self.tintColor;
       tagButton.titleLabel.lineBreakMode = NSLineBreakByTruncatingTail;
-      [tagButton setTitle:tag forState:UIControlStateNormal];
+      [tagButton setTitle:[tag label] forState:UIControlStateNormal];
       [tagButton setTitleColor:self.tintColor forState:UIControlStateNormal];
       [tagButton setTitleColor:[UIColor whiteColor] forState:UIControlStateSelected];
       tagButton.contentEdgeInsets = UIEdgeInsetsMake(DEFAULT_BUTTON_VERTICAL_PADDING, DEFAULT_BUTTON_HORIZONTAL_PADDING, DEFAULT_BUTTON_VERTICAL_PADDING, DEFAULT_BUTTON_HORIZONTAL_PADDING);
@@ -384,7 +425,7 @@ const CGFloat RKTagsViewAutomaticDimension = -0.0001;
   if (index >= 0 && index <= self.mutableTags.count
       && newIndex >= 0 && newIndex <= self.mutableTags.count
       && index != newIndex) {
-    NSString *tag = self.mutableTags[index];
+    id<RKTag> tag = self.mutableTags[index];
     UIButton *button = self.mutableTagButtons[index];
     [self.mutableTags removeObjectAtIndex:index];
     [self.mutableTagButtons removeObjectAtIndex:index];
@@ -443,6 +484,33 @@ const CGFloat RKTagsViewAutomaticDimension = -0.0001;
     [self deselectTagAtIndex:index];
   }
 }
+
+- (void)hideTagAtIndex:(NSInteger)index {
+    if (index >= 0 && index < self.mutableTagButtons.count) {
+        [self.mutableTagButtons[index] setHidden:YES];
+        [self setNeedsLayout];
+    }
+}
+
+- (void)showTagAtIndex:(NSInteger)index {
+    if (index >= 0 && index < self.mutableTagButtons.count) {
+        [self.mutableTagButtons[index] setHidden:NO];
+        [self setNeedsLayout];
+    }
+}
+
+- (void)hideAll {
+    for (int index = 0; index < self.mutableTagButtons.count; index++) {
+        [self hideTagAtIndex:index];
+    }
+}
+
+- (void)showAll {
+    for (int index = 0; index < self.mutableTagButtons.count; index++) {
+        [self showTagAtIndex:index];
+    }
+}
+
 
 #pragma mark Handlers
 
