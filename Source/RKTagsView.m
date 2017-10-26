@@ -234,7 +234,15 @@ const CGFloat RKTagsViewAutomaticDimension = -0.0001;
 }
 
 - (NSArray<id<RKTag>> *)tags {
-  return self.mutableTags.copy;
+    NSMutableArray * tagsStrings = [NSMutableArray new];
+    for (id<RKTag> tag in self.mutableTags) {
+        [tagsStrings addObject:[tag label]];
+    }
+    return tagsStrings;
+}
+
+- (NSArray<id<RKTag>> *)tagsObjects {
+    return self.mutableTags.copy;
 }
 
 - (NSArray<NSNumber *> *)selectedTagIndexes {
@@ -377,15 +385,15 @@ const CGFloat RKTagsViewAutomaticDimension = -0.0001;
   NSArray *tags = self.tags;
   [self removeAllTags];
   for (id<RKTag> tag in tags) {
-    [self addTagWithObject:tag];
+    [self addTagObject:tag];
   }
 }
 
 - (void)addTag:(NSString *)tag {
-    [self addTagWithObject:[RKSimpleTag newWithLabel:tag]];
+    [self addTagObject:[RKSimpleTag newWithLabel:tag]];
 }
 
-- (void)addTagWithObject:(id<RKTag>)tag {
+- (void)addTagObject:(id<RKTag>)tag {
     [self insertTagObject:tag atIndex:self.mutableTags.count];
 }
 - (void)insertTag:(NSString*)tag atIndex:(NSInteger)index {
